@@ -15,7 +15,7 @@ func (resources *Resources) createUser(rw http.ResponseWriter, req *http.Request
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&dbUser)
 	if err != nil {
-		respondWithError(rw, http.StatusInternalServerError, err.Error())
+		respondWithError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
 

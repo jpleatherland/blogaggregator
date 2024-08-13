@@ -29,15 +29,23 @@ func main() {
 
 	mux.HandleFunc("GET /v1/healthz", healthCheck)
 	mux.HandleFunc("GET /v1/err", errorCheck)
+
 	mux.HandleFunc("POST /v1/users", resources.createUser)
 	mux.HandleFunc("GET /v1/users", resources.authMiddleware(resources.getUser))
-	mux.HandlerFunc("POST /v1/feeds", resources.authMiddleware(resources.createFeed))
+
+	mux.HandleFunc("POST /v1/feeds", resources.authMiddleware(resources.createFeed))
+	mux.HandleFunc("GET /v1/feeds", resources.getAllFeeds)
+
+	mux.HandleFunc("POST /v1/feed_follows", resources.authMiddleware(resources.createFeedFollow))
+	mux.HandleFunc("GET /v1/feed_follows", resources.authMiddleware(resources.getFeedFollowsByUserId))
+	mux.HandleFunc("DELETE /v1/feed_follows/{feedFollowID}", resources.authMiddleware(resources.deleteFeedFollow))
 
 	server := &http.Server{
-		Addr: ":" + PORT,
+		Addr:    ":" + PORT,
 		Handler: mux,
 	}
 
+	log.Printf("Listening on port: " + PORT)
 	log.Fatal(server.ListenAndServe())
 }
 

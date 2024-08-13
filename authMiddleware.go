@@ -24,7 +24,7 @@ func (resources *Resources) authMiddleware(handler authHandler) http.HandlerFunc
 		// get user by api key
 		user, err := resources.DB.GetUserByApiKey(ctx, authToken)
 		if err != nil {
-			respondWithError(rw, http.StatusNotFound, "couldn't get user")
+			respondWithError(rw, http.StatusNotFound, "user not found")
 			return
 		}
 
