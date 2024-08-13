@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/http/httptest"
 	"os"
 
@@ -53,21 +57,80 @@ func teardownTestEnvironment() {
 	log.Println("dropped test database")
 }
 
-func createTestUser(resources *Resources) (*httptest.ResponseRecorder, error) {
-	var baseURL = "http://localhost:8080"
+func createTestUser(resources *Resources, username string) (database.User, error) {
+	baseURL := "http://localhost:8080"
+	user := database.User{}
 	userBody := struct {
 		Name string `json:"name"`
 	}{
-		Name: "John",
+		Name: username,
 	}
 
 	payload, err := json.Marshal(userBody)
 	if err != nil {
-		return nil, err
+		return user, err
 	}
 
 	httpReq := httptest.NewRequest("POST", baseURL, bytes.NewBuffer(payload))
 	httpRecorder := httptest.NewRecorder()
 	resources.createUser(httpRecorder, httpReq)
-	return httpRecorder, nil
+	if httpRecorder.Result().StatusCode != http.StatusCreated {
+		errorMsg := fmt.Sprintf("create user response status incorrect, expected: %v got: %v", http.StatusCreated, httpRecorder.Result().Status)
+		return user, errors.New(errorMsg)
+	}
+	responseBody, err := io.ReadAll(httpRecorder.Result().Body)
+	if err != nil {
+		return user, errors.New("unable to read response body: " + err.Error())
+	}
+	err = json.Unmarshal(responseBody, &user)
+	if err != nil {
+		return user, errors.New("unable to unmarshal response body: " + err.Error())
+	}
+	return user, nil
+}
+
+func createTestFeed(resources *Resources, user database.User, feedName, feedUrl string) (feedResponse, error) {
+	baseURL := "http://localhost:8080"
+	feedResponse := feedResponse{
+		Feed:        database.Feed{},
+		Feed_Follow: database.FeedFollow{},
+	}
+
+	feedBody := struct {
+		Name string `json:"name"`
+		Url  string `json:"url"`
+	}{
+		Name: feedName,
+		Url:  feedUrl,
+	}
+
+	payload, err := json.Marshal(feedBody)
+	if err != nil {
+		return feedResponse, errors.New("unable to marshal feed body: " + err.Error())
+	}
+
+	httpReq := httptest.NewRequest("GET", baseURL, bytes.NewBuffer(payload))
+	httpReq.Header.Add("Authorization", "ApiKey "+user.ApiKey)
+	httpRecorder := httptest.NewRecorder()
+	resources.createFeed(httpRecorder, httpReq, user)
+
+	expectedStatus := http.StatusCreated
+	actualStatus := httpRecorder.Result().StatusCode
+
+	if expectedStatus != actualStatus {
+		errMsg := fmt.Sprintf("incorrect status received. expected %v got %v", expectedStatus, actualStatus)
+		return feedResponse, errors.New(errMsg)
+	}
+
+	responseBody, err := io.ReadAll(httpRecorder.Result().Body)
+	if err != nil {
+		return feedResponse, errors.New("unable to read response body: " + err.Error())
+	}
+
+	err = json.Unmarshal(responseBody, &feedResponse)
+	if err != nil {
+		return feedResponse, errors.New("unable to unmarshal response body: " + err.Error())
+	}
+
+	return feedResponse, nil
 }

@@ -11,6 +11,11 @@ import (
 	"github.com/jpleatherland/blogaggregator/internal/database"
 )
 
+type feedResponse struct {
+	Feed        database.Feed       `json:"feed"`
+	Feed_Follow database.FeedFollow `json:"feed_follow"`
+}
+
 func (resources *Resources) createFeed(rw http.ResponseWriter, req *http.Request, user database.User) {
 	decoder := json.NewDecoder(req.Body)
 	feedBody := database.CreateFeedParams{}
@@ -45,7 +50,9 @@ func (resources *Resources) createFeed(rw http.ResponseWriter, req *http.Request
 		return
 	}
 
-	respondWithJSON(rw, http.StatusCreated, map[string]interface{}{"feed": writtenFeed, "feed_follow": writtenFeedFollow})
+	response := feedResponse{Feed: writtenFeed, Feed_Follow: writtenFeedFollow}
+
+	respondWithJSON(rw, http.StatusCreated, response)
 }
 
 func (resources *Resources) getAllFeeds(rw http.ResponseWriter, _ *http.Request) {
