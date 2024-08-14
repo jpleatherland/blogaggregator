@@ -91,10 +91,7 @@ func createTestUser(resources *Resources, username string) (database.User, error
 
 func createTestFeed(resources *Resources, user database.User, feedName, feedUrl string) (feedResponse, error) {
 	baseURL := "http://localhost:8080"
-	feedResponse := feedResponse{
-		Feed:        database.Feed{},
-		Feed_Follow: database.FeedFollow{},
-	}
+	feedResponse := feedResponse{}
 
 	feedBody := struct {
 		Name string `json:"name"`
@@ -109,7 +106,7 @@ func createTestFeed(resources *Resources, user database.User, feedName, feedUrl 
 		return feedResponse, errors.New("unable to marshal feed body: " + err.Error())
 	}
 
-	httpReq := httptest.NewRequest("GET", baseURL, bytes.NewBuffer(payload))
+	httpReq := httptest.NewRequest("POST", baseURL, bytes.NewBuffer(payload))
 	httpReq.Header.Add("Authorization", "ApiKey "+user.ApiKey)
 	httpRecorder := httptest.NewRecorder()
 	resources.createFeed(httpRecorder, httpReq, user)
@@ -133,4 +130,34 @@ func createTestFeed(resources *Resources, user database.User, feedName, feedUrl 
 	}
 
 	return feedResponse, nil
+}
+
+func getTestFeedFollowsByUserId(resources *Resources, user database.User) ([]database.FeedFollow, error) {
+	baseURL := "http://localhost:8080"
+	feedFollowResponse := []database.FeedFollow{}
+
+	httpReq := httptest.NewRequest("GET", baseURL, nil)	
+	httpReq.Header.Add("Authorization", "ApiKey "+user.ApiKey)
+	httpRecorder := httptest.NewRecorder()
+	resources.getFeedFollowsByUserId(httpRecorder, httpReq, user)
+
+	expectedStatus := http.StatusOK
+	actualStatus := httpRecorder.Result().StatusCode
+
+	if expectedStatus != actualStatus {
+		errMsg := fmt.Sprintf("incorrect status received. expected %v got %v", expectedStatus, actualStatus)
+		return feedFollowResponse, errors.New(errMsg)
+	}
+
+	responseBody, err := io.ReadAll(httpRecorder.Result().Body)
+	if err != nil {
+		return feedFollowResponse, errors.New("unable to read response body: " + err.Error())
+	}
+
+	err = json.Unmarshal(responseBody, &feedFollowResponse)
+	if err != nil {
+		return feedFollowResponse, errors.New("unable to unmarshal response body: " + err.Error())
+	}
+
+	return feedFollowResponse, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +43,13 @@ func (resources *Resources) getFeedFollowsByUserId(rw http.ResponseWriter, _ *ht
 
 func (resources *Resources) deleteFeedFollow(rw http.ResponseWriter, req *http.Request, user database.User) {
 	feedFollowId := req.PathValue("feedFollowID")
+	if feedFollowId == "" {
+		path := req.URL.Path
+		pathParts := strings.Split(path, "/")
+		if len(pathParts) > 3 && pathParts[2] == "feed_follows" {
+			feedFollowId = pathParts[3]
+		}
+	}
 	feedFollowUUID, err := uuid.Parse(feedFollowId)
 	if err != nil {
 		respondWithError(rw, http.StatusBadRequest, "bad feed follow id")

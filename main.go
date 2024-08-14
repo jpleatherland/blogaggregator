@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/jpleatherland/blogaggregator/internal/database"
@@ -45,8 +46,21 @@ func main() {
 		Handler: mux,
 	}
 
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for range ticker.C {
+			go func() {
+				log.Print("running fetch feeds")
+				resources.fetchFeeds()
+			}()
+		}
+	}()
+
 	log.Printf("Listening on port: " + PORT)
 	log.Fatal(server.ListenAndServe())
+
 }
 
 func healthCheck(rw http.ResponseWriter, _ *http.Request) {

@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +18,33 @@ import (
 type feedResponse struct {
 	Feed        database.Feed       `json:"feed"`
 	Feed_Follow database.FeedFollow `json:"feed_follow"`
+}
+
+type RSS struct {
+	XMLName xml.Name `xml:"rss"`
+	Version string   `xml:"version.attr"`
+	Channel Channel  `xml:"channel"`
+}
+
+type Channel struct {
+	Title         string `xml:"title"`
+	Link          string `xml:"link"`
+	Description   string `xml:"description"`
+	Language      string `xml:"language"`
+	PubDate       string `xml:"pubDate"`
+	LastBuildDate string `xml:"lastBuildDate"`
+	Generator     string `xml:"generator"`
+	Items         []Item `xml:"item"`
+}
+
+type Item struct {
+	Title       string `xml:"title"`
+	Link        string `xml:"link"`
+	Description string `xml:"description"`
+	Author      string `xml:"author,omitempty"`
+	Category    string `xml:"category,omitempty"`
+	PubDate     string `xml:"pubDate"`
+	Guid        string `xml:"guid"`
 }
 
 func (resources *Resources) createFeed(rw http.ResponseWriter, req *http.Request, user database.User) {
@@ -63,4 +94,65 @@ func (resources *Resources) getAllFeeds(rw http.ResponseWriter, _ *http.Request)
 		return
 	}
 	respondWithJSON(rw, http.StatusOK, feeds)
+}
+
+func getDataFromFeed(url string) (RSS, error) {
+	rss := RSS{}
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Error fetching RSS feed:", err)
+		return rss, err
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return rss, err
+	}
+
+	err = xml.Unmarshal(data, &rss)
+	if err != nil {
+		fmt.Println("Error unmarshalling RSS:", err)
+		return rss, err
+	}
+
+	return rss, nil
+}
+
+func (resources *Resources) fetchFeeds() {
+	log.Print("starting feed fetch")
+	ctx := context.Background()
+	feeds, err := resources.DB.GetNextFeedsToFetch(ctx, 10)
+	if err != nil {
+		log.Print(err.Error())
+		return
+	}
+
+	var waitGroup sync.WaitGroup
+	results := make(chan RSS, len(feeds))
+	waitGroup.Add(len(feeds))
+
+	for i := range feeds {
+		go func() {
+			defer waitGroup.Done()
+			log.Println("getting data for: " + feeds[i].Url)
+			result, err := getDataFromFeed(feeds[i].Url)
+			if err != nil {
+				log.Printf("failed to get data from feed: %v ", err.Error())
+			}
+			results <- result
+		}()
+	}
+
+	waitGroup.Wait()
+	close(results)
+	log.Println("Wait group concluded, results channel closed")
+
+	for result := range results {
+		log.Println("Printing posts for: " + result.Channel.Title)
+		for _, item := range result.Channel.Items {
+			log.Println(item.Title)
+		}
+	}
 }
