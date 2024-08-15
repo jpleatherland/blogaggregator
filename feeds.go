@@ -21,26 +21,26 @@ type feedResponse struct {
 }
 
 type RSS struct {
-	XMLName xml.Name `xml:"rss"`
-	Version string   `xml:"version.attr"`
-	Channel Channel  `xml:"channel"`
+	XMLName xml.Name   `xml:"rss"`
+	Version string     `xml:"version.attr"`
+	Channel RSSChannel `xml:"channel"`
 }
 
-type Channel struct {
-	Title         string `xml:"title"`
-	Link          string `xml:"link"`
-	Description   string `xml:"description"`
-	Language      string `xml:"language"`
-	PubDate       string `xml:"pubDate"`
-	LastBuildDate string `xml:"lastBuildDate"`
-	Generator     string `xml:"generator"`
-	Items         []Item `xml:"item"`
+type RSSChannel struct {
+	Title         string    `xml:"title"`
+	Link          string    `xml:"link"`
+	Description   string    `xml:"description"`
+	Language      string    `xml:"language"`
+	PubDate       string    `xml:"pubDate"`
+	LastBuildDate string    `xml:"lastBuildDate"`
+	Generator     string    `xml:"generator"`
+	Items         []RSSItem `xml:"item"`
 }
 
-type Item struct {
+type RSSItem struct {
 	Title       string `xml:"title"`
 	Link        string `xml:"link"`
-	Description string `xml:"description"`
+	Description string `xml:"description,omitempty"`
 	Author      string `xml:"author,omitempty"`
 	Category    string `xml:"category,omitempty"`
 	PubDate     string `xml:"pubDate"`
@@ -100,20 +100,20 @@ func getDataFromFeed(url string) (RSS, error) {
 	rss := RSS{}
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("Error fetching RSS feed:", err)
+		fmt.Println("Error fetching RSS feed: ", err)
 		return rss, err
 	}
 	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading response body:", err)
+		fmt.Println("Error reading response body: ", err)
 		return rss, err
 	}
 
 	err = xml.Unmarshal(data, &rss)
 	if err != nil {
-		fmt.Println("Error unmarshalling RSS:", err)
+		fmt.Println("Error unmarshalling RSS: ", err)
 		return rss, err
 	}
 
@@ -139,7 +139,7 @@ func (resources *Resources) fetchFeeds() {
 			log.Println("getting data for: " + feeds[i].Url)
 			result, err := getDataFromFeed(feeds[i].Url)
 			if err != nil {
-				log.Printf("failed to get data from feed: %v ", err.Error())
+				log.Printf("failed to get data from feed %v: %v ", feeds[i].Name, err.Error())
 			}
 			results <- result
 		}()
@@ -149,10 +149,14 @@ func (resources *Resources) fetchFeeds() {
 	close(results)
 	log.Println("Wait group concluded, results channel closed")
 
+	chanIdx := 0
 	for result := range results {
-		log.Println("Printing posts for: " + result.Channel.Title)
 		for _, item := range result.Channel.Items {
-			log.Println(item.Title)
+			err := resources.createPost(item, feeds[chanIdx].ID)
+			if err != nil {
+				log.Println(err.Error())
+			}
 		}
 	}
+	chanIdx++
 }

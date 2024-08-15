@@ -136,7 +136,7 @@ func getTestFeedFollowsByUserId(resources *Resources, user database.User) ([]dat
 	baseURL := "http://localhost:8080"
 	feedFollowResponse := []database.FeedFollow{}
 
-	httpReq := httptest.NewRequest("GET", baseURL, nil)	
+	httpReq := httptest.NewRequest("GET", baseURL, nil)
 	httpReq.Header.Add("Authorization", "ApiKey "+user.ApiKey)
 	httpRecorder := httptest.NewRecorder()
 	resources.getFeedFollowsByUserId(httpRecorder, httpReq, user)
@@ -160,4 +160,34 @@ func getTestFeedFollowsByUserId(resources *Resources, user database.User) ([]dat
 	}
 
 	return feedFollowResponse, nil
+}
+
+func getTestPostsByUser(resources *Resources, user database.User) ([]database.GetPostsByUserRow, error) {
+	baseURL := "http://localhost:8080?limit=10"
+	postResponse := []database.GetPostsByUserRow{}
+
+	httpReq := httptest.NewRequest("GET", baseURL, nil)
+	httpReq.Header.Add("Authorization", "ApiKey "+user.ApiKey)
+	httpRecorder := httptest.NewRecorder()
+	resources.getPostsByUser(httpRecorder, httpReq, user)
+
+	expectedStatus := http.StatusOK
+	actualStatus := httpRecorder.Result().StatusCode
+
+	if expectedStatus != actualStatus {
+		errMsg := fmt.Sprintf("incorrect status received. expected %v got %v", expectedStatus, actualStatus)
+		return postResponse, errors.New(errMsg)
+	}
+
+	responseBody, err := io.ReadAll(httpRecorder.Result().Body)
+	if err != nil {
+		return postResponse, errors.New("unable to read response body: " + err.Error())
+	}
+
+	err = json.Unmarshal(responseBody, &postResponse)
+	if err != nil {
+		return postResponse, errors.New("unable to unmarshal response body: " + err.Error())
+	}
+
+	return postResponse, nil
 }
