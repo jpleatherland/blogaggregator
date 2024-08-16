@@ -40,27 +40,23 @@ func TestCreateFeed(t *testing.T) {
 func TestGetAllFeeds(t *testing.T) {
 	//create user & feed 1
 	usernames := [2]string{"Testing get feed user", "Testing get feed user 2"}
-	user, err := createTestUser(&resources, usernames[0])
-	if err != nil {
-		t.Fatalf("test user creation failed: %v", err.Error())
+	users := [2]database.User{}
+	for i, user := range usernames {
+		newUser, err := createTestUser(&resources, user)
+		if err != nil {
+			t.Fatalf("test user creation failed: %v", err.Error())
+		}
+		users[i] = newUser
 	}
 
 	feedNames := [2]string{"test get feed name 1", "test get feed name 2"}
 	feedUrls := [2]string{"test get feed url 1", "test get feed url 2"}
-	_, err = createTestFeed(&resources, user, feedNames[0], feedUrls[0])
-	if err != nil {
-		t.Fatalf("test feed creation failed: %v", err.Error())
-	}
 
-	//create user & feed 2
-	user2, err := createTestUser(&resources, usernames[1])
-	if err != nil {
-		t.Fatalf("test user creation failed: %v", err.Error())
-	}
-
-	_, err = createTestFeed(&resources, user2, feedNames[1], feedUrls[1])
-	if err != nil {
-		t.Fatalf("test feed creation failed: %v", err.Error())
+	for i := range feedNames {
+		_, err := createTestFeed(&resources, users[i], feedNames[i], feedUrls[i])
+		if err != nil {
+			t.Fatalf("test feed creation failed: %v", err.Error())
+		}
 	}
 
 	httpReq := httptest.NewRequest("GET", baseURL, nil)
@@ -91,8 +87,8 @@ func TestGetAllFeeds(t *testing.T) {
 }
 
 func TestFetchFeeds(t *testing.T) {
-	t.Skip(`This test fails when run for the whole suite but works on its own. 
-	I don't know if it's a race condition or what. 
+	t.Skip(`This test fails when run for the whole suite but works on its own.
+	I don't know if it's a race condition or what.
 	Have tried sleeps to see if it works after the rest of the tests but no joy.`)
 	username := "Test user fetch feeds x"
 	user, err := createTestUser(&resources, username)
