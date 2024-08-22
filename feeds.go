@@ -157,6 +157,6 @@ func (resources *Resources) fetchFeeds() {
 				log.Println(err.Error())
 			}
 		}
+		chanIdx++
 	}
-	chanIdx++
 }

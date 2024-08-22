@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -19,7 +18,7 @@ func TestCreateFeed(t *testing.T) {
 	}
 
 	feedName := "test feed name 1"
-	feedUrl := "test feed url 1"
+	feedUrl := "https://arstechnica.com/feed/"
 	feed, err := createTestFeed(&resources, user, feedName, feedUrl)
 	if err != nil {
 		t.Fatalf("test feed creation failed: %v", err.Error())
@@ -50,7 +49,7 @@ func TestGetAllFeeds(t *testing.T) {
 	}
 
 	feedNames := [2]string{"test get feed name 1", "test get feed name 2"}
-	feedUrls := [2]string{"test get feed url 1", "test get feed url 2"}
+	feedUrls := [2]string{"https://www.espn.com/espn/rss/news", "https://www.wired.com/feed/rss"}
 
 	for i := range feedNames {
 		_, err := createTestFeed(&resources, users[i], feedNames[i], feedUrls[i])
@@ -87,9 +86,9 @@ func TestGetAllFeeds(t *testing.T) {
 }
 
 func TestFetchFeeds(t *testing.T) {
-	t.Skip(`This test fails when run for the whole suite but works on its own.
-	I don't know if it's a race condition or what.
-	Have tried sleeps to see if it works after the rest of the tests but no joy.`)
+	//t.Skip(`This test fails when run for the whole suite but works on its own.
+	//I don't know if it's a race condition or what.
+	//Have tried sleeps to see if it works after the rest of the tests but no joy.`)
 	username := "Test user fetch feeds x"
 	user, err := createTestUser(&resources, username)
 	if err != nil {
@@ -110,10 +109,7 @@ func TestFetchFeeds(t *testing.T) {
 
 	resources.fetchFeeds()
 
-	ctx := context.Background()
-
-	getPostParams := database.GetPostsByUserParams{UserID: user.ApiKey, Limit: 10}
-	posts, err := resources.DB.GetPostsByUser(ctx, getPostParams)
+	posts, err := getTestPostsByUser(&resources, user)
 	if err != nil {
 		t.Errorf("failed to get get posts: %v", err.Error())
 	}

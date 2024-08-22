@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,12 +27,8 @@ func (resources *Resources) createPost(post RSSItem, feedID uuid.UUID) error {
 		postParams.Description = sql.NullString{String: post.Description, Valid: true}
 	}
 	if post.PubDate != "" {
-		t, err := identifyDateFormat(post.PubDate)
-		if err != nil {
-			return err
-		} else {
-			postParams.PublishedAt = sql.NullTime{Time: t, Valid: true}
-		}
+		t := identifyDateFormat(post.PubDate)
+		postParams.PublishedAt = sql.NullTime{Time: t, Valid: true}
 	}
 	ctx := context.Background()
 	err := resources.DB.CreatePost(ctx, postParams)
@@ -69,7 +64,7 @@ func (resources *Resources) getPostsByUser(rw http.ResponseWriter, req *http.Req
 	rw.Write(postResponse)
 }
 
-func identifyDateFormat(dateString string) (time.Time, error) {
+func identifyDateFormat(dateString string) time.Time {
 	layouts := []string{
 		time.RFC3339,
 		time.RFC1123Z,
@@ -84,8 +79,8 @@ func identifyDateFormat(dateString string) (time.Time, error) {
 	for _, layout := range layouts {
 		parsedTime, err = time.Parse(layout, dateString)
 		if err == nil {
-			return parsedTime, nil
+			return parsedTime
 		}
 	}
-	return time.Time{}, fmt.Errorf("unknown date format")
+	return time.Time{}
 }

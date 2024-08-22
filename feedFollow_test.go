@@ -1,9 +1,9 @@
 package main
 
 import (
-	"io"
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,7 +46,7 @@ func TestCreateFeedFollow(t *testing.T) {
 	if httpRecorder.Result().StatusCode != http.StatusCreated {
 		t.Errorf("create feed follow status incorrect, expected: %v got: %v", http.StatusCreated, httpRecorder.Result().Status)
 	}
-	
+
 	responseBody, err := io.ReadAll(httpRecorder.Result().Body)
 	if err != nil {
 		t.Errorf("unable to read response body: " + err.Error())
@@ -82,7 +82,7 @@ func TestGetFeedFollowsByUserId(t *testing.T) {
 		}
 		feeds[i] = feed
 	}
-	dbFeeds, err :=	getTestFeedFollowsByUserId(&resources, user)
+	dbFeeds, err := getTestFeedFollowsByUserId(&resources, user)
 	if err != nil {
 		t.Fatalf("unable to get feeds by User ID: %v", err.Error())
 	}
@@ -143,5 +143,5 @@ func TestDeleteFeedFollow(t *testing.T) {
 			t.Errorf("feed %v has not been deleted", feed.FeedID)
 		}
 	}
-	
+
 }
